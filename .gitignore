@@ -1,7 +1,26 @@
+# Environment
 .env
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-uploads/
-.DS_Store
+*.pyd
+.Python
+
+# Virtual environments
 venv/
+.venv/
+env/
+
+# Uploads and local data
+uploads/
+.qdrant/
+
+# Next.js
+.next/
+node_modules/
+
+# Model cache
+.cache/
+huggingface/

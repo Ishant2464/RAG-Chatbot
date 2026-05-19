@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     LLM_MODEL: str = "distilgpt2"
     LLM_MAX_NEW_TOKENS: int = 150
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

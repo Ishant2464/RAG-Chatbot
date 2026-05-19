@@ -25,6 +25,7 @@ services:
       - REDIS_PORT=6379
       - UPLOAD_DIR=/tmp/rag_uploads
     volumes:
+      - ./app:/app/app
       - ./uploads:/tmp/rag_uploads
     depends_on:
       - vector-db

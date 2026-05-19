@@ -8,9 +8,9 @@ RUN apt-get update \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch
-
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
 COPY app/ ./app/
 

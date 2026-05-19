@@ -1,5 +1,5 @@
 from app.clients.vector_store import search
-from app.clients.openai_client import call_llm
+from app.clients.groq_client import call_llm
 
 MAX_CHUNKS = 3
 MAX_CHARS = 1200
@@ -10,17 +10,9 @@ async def handle_chat(query: str) -> dict:
     print("QUERY:", query)
 
 
-    docs = search(query, top_k=MAX_CHUNKS)
+    context = search(query, top_k=MAX_CHUNKS)
 
-    print("DOCS RETRIEVED:", len(docs) if isinstance(docs, list) else "unknown")
-
-    if isinstance(docs, list):
-        context = "\n".join(
-            d.page_content if hasattr(d, "page_content") else str(d)
-            for d in docs
-        )
-    else:
-        context = str(docs)
+    print("DOCS RETRIEVED:", len(context))
 
     if not context.strip():
         context = "No relevant context found."
