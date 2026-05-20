@@ -33,3 +33,28 @@ def _generate_sync(context: str, query: str) -> str:
 
 async def call_llm(context: str, query: str) -> str:
     return await asyncio.to_thread(_generate_sync, context, query)
+
+from collections.abc import AsyncGenerator
+
+async def stream_llm(context: str, query: str) -> AsyncGenerator[str, None]:
+    client = _get_client()
+    stream = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful assistant. Answer questions using only the provided context. Be concise and accurate."
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion: {query}"
+            }
+        ],
+        temperature=0,
+        max_tokens=512,
+        stream=True,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta is not None:
+            yield delta
