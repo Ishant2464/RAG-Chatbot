@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
 COPY start.sh .
-RUN chmod +x start.sh
+COPY worker.sh .
+RUN chmod +x start.sh worker.sh
 
 COPY app/ ./app/
 
