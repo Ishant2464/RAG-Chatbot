@@ -1,2 +1,3 @@
 #!/bin/bash
-python -m app.worker
+set -e
+exec python -m app.worker
