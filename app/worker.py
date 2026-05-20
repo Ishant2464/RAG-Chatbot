@@ -1,9 +1,10 @@
-from rq import Worker, Queue
 from redis import Redis
-from app.core.config import REDIS_HOST, REDIS_PORT
+from rq import Worker, Queue
+from app.core.config import settings
 
-redis_conn = Redis(host=REDIS_HOST, port=REDIS_PORT)
+redis_conn = Redis.from_url(settings.REDIS_URL)
 
 if __name__ == "__main__":
-    worker = Worker([Queue(connection=redis_conn)], connection=redis_conn)
-    worker.work(with_scheduler=True)
+    queue = Queue(connection=redis_conn)
+    worker = Worker([queue], connection=redis_conn)
+    worker.work()

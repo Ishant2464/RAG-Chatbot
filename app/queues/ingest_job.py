@@ -1,9 +1,9 @@
+from redis import Redis
 from app.core.config import settings
 from rq import Queue
-from redis import Redis
 from app.queues.worker_tasks import process_doc
 
-redis_conn = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
+redis_conn = Redis.from_url(settings.REDIS_URL)
 q = Queue(connection=redis_conn, default_timeout=settings.RQ_JOB_TIMEOUT)
 
 

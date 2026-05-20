@@ -14,9 +14,11 @@ class Settings(BaseSettings):
 
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION: str = "rag_docs"
+    QDRANT_API_KEY: str = ""
 
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_URL: str = "redis://valkey:6379"
     RQ_JOB_TIMEOUT: int = 300
     UPLOAD_DIR: str = "/tmp/rag_uploads"
 

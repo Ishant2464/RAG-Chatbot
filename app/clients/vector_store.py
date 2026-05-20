@@ -1,12 +1,15 @@
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
 from langchain_community.embeddings import FastEmbedEmbeddings
-from app.core.config import QDRANT_URL, QDRANT_COLLECTION, EMBEDDING_MODEL
+from app.core.config import QDRANT_URL, QDRANT_COLLECTION, EMBEDDING_MODEL, settings
 
 _embedding_model: FastEmbedEmbeddings | None = None
 _vector_store: QdrantVectorStore | None = None
 
-qdrant_client = QdrantClient(url=QDRANT_URL)
+qdrant_client = QdrantClient(
+    url=QDRANT_URL,
+    api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
+)
 
 
 def get_embedding_model() -> FastEmbedEmbeddings:
@@ -31,6 +34,7 @@ def get_vector_store() -> QdrantVectorStore:
         url=QDRANT_URL,
         collection_name=QDRANT_COLLECTION,
         embedding=get_embedding_model(),
+        api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
     )
     return _vector_store
 
@@ -53,4 +57,5 @@ def ingest_documents(chunks, collection_name: str = QDRANT_COLLECTION):
         embedding=get_embedding_model(),
         url=QDRANT_URL,
         collection_name=collection_name,
+        api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
     )
