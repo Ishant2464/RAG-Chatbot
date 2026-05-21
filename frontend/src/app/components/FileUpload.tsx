@@ -52,7 +52,7 @@ export default function FileUpload({ onSuccess }: Props) {
   }
 
   async function pollStatus(jobId: string, storageUrl: string) {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 300; i++) {
       try {
         const res = await fetch(`${API}/ingest/${jobId}/status`)
         const data = await res.json()
