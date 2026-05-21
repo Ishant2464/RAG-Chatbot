@@ -12,13 +12,14 @@ qdrant_client = QdrantClient(
     api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
 )
 
-# Create payload index for file_url metadata field for efficient filtering
+# Create payload index for metadata.file_url metadata field for efficient filtering
 try:
     qdrant_client.create_payload_index(
         collection_name=QDRANT_COLLECTION,
-        field_name="file_url",
+        field_name="metadata.file_url",  # <-- FIXED: Added 'metadata.' prefix
         field_schema=models.PayloadSchemaType.KEYWORD
     )
+    print("Successfully verified Qdrant payload index for metadata.file_url.")
 except Exception as e:
     pass
 
@@ -61,7 +62,7 @@ def search(query: str, file_url: str, top_k: int = 4) -> str:
     filter_condition = {
         "must": [
             {
-                "key": "file_url",
+                "key": "metadata.file_url",  # <-- FIXED: Added 'metadata.' prefix
                 "match": {
                     "value": file_url
                 }
