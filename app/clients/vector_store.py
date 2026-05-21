@@ -1,4 +1,5 @@
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 from langchain_qdrant import QdrantVectorStore
 from langchain_community.embeddings import FastEmbedEmbeddings
 from app.core.config import QDRANT_URL, QDRANT_COLLECTION, EMBEDDING_MODEL, settings
@@ -10,6 +11,16 @@ qdrant_client = QdrantClient(
     url=QDRANT_URL,
     api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
 )
+
+# Create payload index for file_url metadata field for efficient filtering
+try:
+    qdrant_client.create_payload_index(
+        collection_name=QDRANT_COLLECTION,
+        field_name="file_url",
+        field_schema=models.PayloadSchemaType.KEYWORD
+    )
+except Exception as e:
+    pass
 
 
 def get_embedding_model() -> FastEmbedEmbeddings:
