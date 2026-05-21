@@ -5,7 +5,7 @@ import FileUpload from './components/FileUpload'
 import ChatWindow from './components/ChatWindow'
 
 export default function Home() {
-  const [isIngested, setIsIngested] = useState(false)
+  const [fileUrl, setFileUrl] = useState<string | null>(null)
 
   return (
     <div className="flex h-full flex-col">
@@ -16,9 +16,9 @@ export default function Home() {
             <p className="text-sm text-gray-400">Upload a PDF and ask questions about it</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${isIngested ? 'bg-green-400' : 'bg-gray-600'}`} />
+            <div className={`h-2 w-2 rounded-full ${fileUrl ? 'bg-green-400' : 'bg-gray-600'}`} />
             <span className="text-sm text-gray-400">
-              {isIngested ? 'Document ready' : 'No document loaded'}
+              {fileUrl ? 'Document ready' : 'No document loaded'}
             </span>
           </div>
         </div>
@@ -26,12 +26,12 @@ export default function Home() {
 
       <main className="flex flex-1 overflow-hidden">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-0">
-          {!isIngested ? (
+          {!fileUrl ? (
             <div className="flex flex-1 items-center justify-center p-8">
-              <FileUpload onSuccess={() => setIsIngested(true)} />
+              <FileUpload onSuccess={(url: string) => setFileUrl(url)} />
             </div>
           ) : (
-            <ChatWindow />
+            <ChatWindow fileUrl={fileUrl} />
           )}
         </div>
       </main>

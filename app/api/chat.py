@@ -13,6 +13,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     query: str
+    file_url: str
 
     @field_validator("query")
     @classmethod
@@ -22,17 +23,17 @@ class ChatRequest(BaseModel):
         return v
 
 
-def get_chat_service() -> Callable[[str], Awaitable[dict]]:
+def get_chat_service() -> Callable[[str, str], Awaitable[dict]]:
     return handle_chat
 
 
 @router.post("/chat")
 async def chat(
     request: ChatRequest,
-    chat_service: Callable[[str], Awaitable[dict]] = Depends(get_chat_service),
+    chat_service: Callable[[str, str], Awaitable[dict]] = Depends(get_chat_service),
 ):
     try:
-        return await chat_service(request.query)
+        return await chat_service(request.query, request.file_url)
     except Exception as e:
         print(f"CHAT ERROR: {e}")
         raise HTTPException(status_code=503, detail=f"Chat service error: {str(e)}")
@@ -41,7 +42,7 @@ async def chat(
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     try:
-        context = search(request.query, top_k=3)
+        context = search(request.query, file_url=request.file_url, top_k=3)
         if not context.strip():
             context = "No relevant context found."
         context = context[:1200]

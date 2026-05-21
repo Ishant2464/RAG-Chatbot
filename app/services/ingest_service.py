@@ -8,6 +8,7 @@ from app.clients.vector_store import ingest_documents
 def process_document(storage_url: str) -> None:
     """
     Download PDF from Supabase storage URL and process it.
+    Tags all chunks with the file_url metadata for isolated retrieval.
     """
     print(f"[Ingest] Downloading document from: {storage_url}")
     
@@ -18,7 +19,6 @@ def process_document(storage_url: str) -> None:
         
         # Load PDF from bytes using PyPDFLoader with BytesIO
         pdf_bytes = response.content
-        pdf_file = io.BytesIO(pdf_bytes)
         
         # Use PyPDFLoader with temporary local file
         # (PyPDFLoader requires a file path, so we'll write to temp and read)
@@ -31,6 +31,10 @@ def process_document(storage_url: str) -> None:
         docs = loader.load()
         print(f"[Ingest] Loaded {len(docs)} pages")
         
+        # Tag each document with the storage URL for retrieval filtering
+        for doc in docs:
+            doc.metadata["file_url"] = storage_url
+        
         # Clean up temp file
         import os
         os.unlink(tmp_path)
@@ -39,8 +43,9 @@ def process_document(storage_url: str) -> None:
         print(f"[Ingest] Failed to download/load document: {str(e)}")
         raise
 
+    # Increased chunk size to 2000 for better context retention
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
+        chunk_size=2000,
         chunk_overlap=200,
     )
     chunks = splitter.split_documents(docs)

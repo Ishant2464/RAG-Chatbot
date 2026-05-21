@@ -9,7 +9,11 @@ interface Message {
   content: string
 }
 
-export default function ChatWindow() {
+interface Props {
+  fileUrl: string
+}
+
+export default function ChatWindow({ fileUrl }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
@@ -51,7 +55,10 @@ export default function ChatWindow() {
       const res = await fetch(`${API}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ 
+          query,
+          file_url: fileUrl,
+        }),
       })
 
       if (!res.ok) throw new Error('Stream request failed')

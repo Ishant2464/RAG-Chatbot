@@ -3,7 +3,7 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
 
 interface Props {
-  onSuccess: () => void
+  onSuccess: (url: string) => void
 }
 
 type Status = 'idle' | 'uploading' | 'polling' | 'done' | 'error'
@@ -43,7 +43,95 @@ export default function FileUpload({ onSuccess }: Props) {
 
       setStatus('polling')
       setMessage('Processing document...')
-      pollStatus(data.job_id)
+      pollStatus(data.job_id, data.storage_url)
+    } catch (err: unknown) {
+      setStatus('error')
+      setMessage(err instanceof Error ? err.message : 'Upload failed')
+    }
+  }
+
+  async function pollStatus(jobId: string, storageUrl: string) {
+    for (let i = 0; i < 60; i++) {
+      try {
+        const res = await fetch(`${API}/ingest/${jobId}/status`)
+        const data = await res.json()
+
+        if (data.status === 'finished') {
+          setStatus('done')
+          setMessage('✅ Document ready!')
+          onSuccess(storageUrl)
+          return
+        }
+
+        if (data.status === 'failed') {
+          setStatus('error')
+          setMessage(`Processing failed: ${data.error}`)
+          return
+        }
+      } catch (err) {
+        console.error('Poll error:', err)
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+
+    setStatus('error')
+    setMessage('Processing timeout')
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  function handleDragLeave() {
+    setIsDragging(false)
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (files.length > 0) uploadFile(files[0])
+  }
+
+  return (
+    <div className="w-full max-w-md rounded-lg border-2 border-dashed border-gray-600 p-8 text-center">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf"
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          if (e.target.files?.length) uploadFile(e.target.files[0])
+        }}
+        className="hidden"
+      />
+
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`cursor-pointer transition ${isDragging ? 'bg-gray-700' : ''}`}
+      >
+        <div className="mb-4 text-4xl">📄</div>
+        <h3 className="mb-2 text-lg font-semibold text-white">
+          {status === 'uploading' || status === 'polling' ? 'Processing...' : 'Upload PDF'}
+        </h3>
+        <p className="mb-4 text-sm text-gray-400">{message || 'Drag and drop or click to select'}</p>
+
+        {status === 'idle' && (
+          <button
+            type="button"
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Choose File
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
     } catch (err: unknown) {
       setStatus('error')
       setMessage(err instanceof Error ? err.message : 'Upload failed')

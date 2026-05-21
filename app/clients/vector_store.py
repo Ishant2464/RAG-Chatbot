@@ -39,9 +39,31 @@ def get_vector_store() -> QdrantVectorStore:
     return _vector_store
 
 
-def search(query: str, top_k: int = 4) -> str:
+def search(query: str, file_url: str, top_k: int = 4) -> str:
+    """
+    Search for documents matching query and filtered by file_url.
+    Only returns chunks that belong to the specified file.
+    """
     vector_store = get_vector_store()
-    results = vector_store.similarity_search(query=query, k=top_k)
+    
+    # Create metadata filter to match only chunks from this file
+    filter_condition = {
+        "must": [
+            {
+                "key": "file_url",
+                "match": {
+                    "value": file_url
+                }
+            }
+        ]
+    }
+    
+    results = vector_store.similarity_search(
+        query=query, 
+        k=top_k,
+        filter=filter_condition
+    )
+    
     context_parts = [
         f"Page Content: {r.page_content}\n"
         f"Page Number: {r.metadata.get('page_label', 'N/A')}\n"
