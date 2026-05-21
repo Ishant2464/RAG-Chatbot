@@ -28,7 +28,7 @@ rq==2.3.2
 # Storage
 #
 supabase==2.4.0
-httpx==0.24.1
+httpx>=0.27.2
 requests==2.32.3
 
 #
