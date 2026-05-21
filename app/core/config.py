@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION: str = "rag_docs"
     QDRANT_API_KEY: str = ""
+    COHERE_API_KEY: str = ""
 
     REDIS_URL: str = "redis://localhost:6379"
     RQ_JOB_TIMEOUT: int = 300

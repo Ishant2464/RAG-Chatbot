@@ -1,10 +1,10 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain_qdrant import QdrantVectorStore
-from langchain_community.embeddings import FastEmbedEmbeddings
-from app.core.config import QDRANT_URL, QDRANT_COLLECTION, EMBEDDING_MODEL, settings
+from langchain_cohere import CohereEmbeddings
+from app.core.config import QDRANT_URL, QDRANT_COLLECTION, settings
 
-_embedding_model: FastEmbedEmbeddings | None = None
+_embedding_model: CohereEmbeddings | None = None
 _vector_store: QdrantVectorStore | None = None
 
 qdrant_client = QdrantClient(
@@ -24,18 +24,15 @@ except Exception as e:
     pass
 
 
-def get_embedding_model() -> FastEmbedEmbeddings:
+def get_embedding_model() -> CohereEmbeddings:
     global _embedding_model
     if _embedding_model is not None:
         return _embedding_model
-    try:
-        _embedding_model = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-        return _embedding_model
-    except Exception as exc:
-        raise RuntimeError(
-            "Failed to initialize FastEmbed embedding model. "
-            "Ensure qdrant-client[fastembed] is installed."
-        ) from exc
+    _embedding_model = CohereEmbeddings(
+        cohere_api_key=settings.COHERE_API_KEY,
+        model="embed-english-v3.0",
+    )
+    return _embedding_model
 
 
 def get_vector_store() -> QdrantVectorStore:
