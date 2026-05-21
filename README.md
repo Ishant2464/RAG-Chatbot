@@ -10,7 +10,7 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 
 ### Core Capabilities
 - ✅ **Document Ingestion** — Upload PDFs, automatically parse, chunk, embed, and index
-- ✅ **Semantic Search** — ONNX-based FastEmbed model finds relevant document sections
+- ✅ **Semantic Search** — Cohere embeddings find relevant document sections
 - ✅ **LLM-Powered Answers** — Groq API (llama-3.1) generates grounded responses
 - ✅ **Multi-Document Support** — Each upload gets a unique file_url metadata tag for isolated retrieval
 - ✅ **Async Processing** — Background job queue prevents blocking; handle 30–60 second PDFs instantly
@@ -79,7 +79,7 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
     │  ├─ PyPDF parse                            │
     │  ├─ Add metadata: doc.metadata["file_url"] │
     │  ├─ Split into 2000-char chunks           │
-    │  ├─ FastEmbed → vectors                    │
+    │  ├─ Cohere embeddings → vectors           │
     │  └─ Store in Qdrant                        │
     │                                              │
     │  Process 2: Uvicorn Health Server :8000    │
@@ -112,7 +112,7 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 | **Job Queue** | RQ (Redis Queue) | Simple, Python-native, reliable |
 | **PDF Parsing** | PyPDF | Lightweight, no C deps |
 | **Text Chunking** | LangChain TextSplitter | Context-aware splitting |
-| **Embeddings** | FastEmbed (ONNX) | No PyTorch; minimal Docker footprint |
+| **Embeddings** | Cohere `embed-english-v3.0` | Managed cloud embeddings; no local model download |
 | **Vector DB** | Qdrant | REST API, metadata filtering, cloud-hosted |
 | **LLM** | Groq API (llama-3.1-8b) | Fast, free tier, no local model |
 | **Config** | Pydantic Settings | Type-safe environment variables |
@@ -138,6 +138,7 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 | **Frontend** | Vercel | Free tier |
 | **Monitoring** | UptimeRobot | Free tier |
 | **LLM** | Groq API | Free tier |
+| **Embeddings** | Cohere API | Usage-based |
 | **Total** | | ~$14/mo |
 
 ---
@@ -148,6 +149,7 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 - Python 3.11+, Docker, Docker Compose
 - Node.js 18+
 - Free Groq API key: https://console.groq.com/keys
+- Cohere API key: https://dashboard.cohere.com/api-keys
 
 ### Backend
 
@@ -161,6 +163,7 @@ cp .env.example .env
 **2. Edit `.env`**
 ```env
 GROQ_API_KEY=gsk_...
+COHERE_API_KEY=...
 QDRANT_URL=http://localhost:6333
 REDIS_URL=redis://localhost:6379
 ```
@@ -203,6 +206,7 @@ Render Dashboard → Create Web Service
 ├─ Start: (blank, uses Dockerfile CMD)
 ├─ Environment Variables:
 │  ├─ GROQ_API_KEY=...
+│  ├─ COHERE_API_KEY=...
 │  ├─ QDRANT_URL=https://[cluster].qdrant.io
 │  ├─ QDRANT_API_KEY=...
 │  ├─ REDIS_URL=rediss://...@upstash.io:6379
@@ -368,10 +372,10 @@ rag-chatbot/
 **Solution:** 2000-char chunks with 200-char overlap.
 **Result:** Good semantic context + precise retrieval.
 
-### 5. FastEmbed (ONNX)
-**Problem:** PyTorch adds ~1.5GB to Docker image.
-**Solution:** Use ONNX-optimized FastEmbed.
-**Result:** Faster builds, smaller images, same quality.
+### 5. Cloud Embeddings (Cohere)
+**Problem:** Local embedding models increase image size and deployment complexity.
+**Solution:** Use Cohere `embed-english-v3.0` through the cloud API.
+**Result:** Smaller containers, simpler builds, and managed embedding quality.
 
 ### 6. Separate API + Worker Services
 **Problem:** 512MB RAM limit; API + Worker together can exceed it.
@@ -439,4 +443,4 @@ MIT
 
 ## 🙏 Credits
 
-Built with **FastAPI**, **Groq**, **Qdrant**, **LangChain**, **Supabase**, **Render**, **Vercel**.
+Built with **FastAPI**, **Groq**, **Cohere**, **Qdrant**, **LangChain**, **Supabase**, **Render**, **Vercel**.
