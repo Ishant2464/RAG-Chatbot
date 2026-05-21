@@ -12,10 +12,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://*.vercel.app",
-        "rag-chatbot-sage.vercel.app",
-        "https://rag-chatbot-git-main-ishant2464s-projects.vercel.app/",
-        "rag-chatbot-bt19wswaf-ishant2464s-projects.vercel.app"
+        "https://rag-chatbot-sage.vercel.app", 
+        "https://rag-chatbot-git-main-ishant2464s-projects.vercel.app",
+        "https://rag-chatbot-bt19wswaf-ishant2464s-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
