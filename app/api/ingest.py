@@ -1,35 +1,38 @@
 import os
-import shutil
-from collections.abc import Callable
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from rq.job import Job
 
 from app.queues.ingest_job import enqueue_ingest, redis_conn
-from app.core.config import UPLOAD_DIR
+from app.clients.supabase_client import upload_file_to_supabase
 
 router = APIRouter()
 
 
-def get_enqueue_service() -> Callable[[str], str]:
-    return enqueue_ingest
-
-
 @router.post("/ingest")
-async def ingest(
-    file: UploadFile = File(...),
-    enqueue_service: Callable[[str], str] = Depends(get_enqueue_service),
-):
+async def ingest(file: UploadFile = File(...)):
+    """
+    Upload PDF to Supabase Storage, then enqueue for processing.
+    Worker will download from Supabase URL and process.
+    """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
     try:
-        dest_path = os.path.join(UPLOAD_DIR, file.filename)
-        with open(dest_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        job_id = enqueue_service(dest_path)
+        # Read file content
+        file_content = await file.read()
+        print(f"[API] File received: {file.filename} ({len(file_content)} bytes)")
+        
+        # Upload to Supabase Storage
+        storage_url = upload_file_to_supabase(file_content, file.filename)
+        print(f"[API] File uploaded to Supabase: {storage_url}")
+        
+        # Enqueue job with storage URL (not local path)
+        job_id = enqueue_ingest(storage_url)
+        print(f"[API] Job enqueued: {job_id}")
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to queue ingestion job: {str(e)}")
+        print(f"[API] Ingestion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
     return {"job_id": job_id, "file": file.filename, "status": "queued"}
 

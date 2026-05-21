@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
     RQ_JOB_TIMEOUT: int = 300
     UPLOAD_DIR: str = "/tmp/rag_uploads"
+    
+    # Supabase Storage
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_BUCKET: str = "rag-docs"
 
 
 def ensure_upload_directory(upload_dir: str) -> None:
