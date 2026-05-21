@@ -21,8 +21,7 @@ services:
       - .env
     environment:
       - QDRANT_URL=http://vector-db:6333
-      - REDIS_HOST=valkey
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://valkey:6379
       - UPLOAD_DIR=/tmp/rag_uploads
     volumes:
       - ./app:/app/app
@@ -38,8 +37,7 @@ services:
       - .env
     environment:
       - QDRANT_URL=http://vector-db:6333
-      - REDIS_HOST=valkey
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://valkey:6379
       - UPLOAD_DIR=/tmp/rag_uploads
     volumes:
       - ./uploads:/tmp/rag_uploads

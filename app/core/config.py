@@ -16,9 +16,7 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION: str = "rag_docs"
     QDRANT_API_KEY: str = ""
 
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_URL: str = "redis://valkey:6379"
+    REDIS_URL: str = "redis://localhost:6379"
     RQ_JOB_TIMEOUT: int = 300
     UPLOAD_DIR: str = "/tmp/rag_uploads"
 
@@ -29,11 +27,14 @@ def ensure_upload_directory(upload_dir: str) -> None:
 
 settings = Settings()
 
-GEMINI_API_KEY: str = settings.GEMINI_API_KEY
+# Validate required environment variables on startup
+if not settings.GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY environment variable is required")
+if not settings.QDRANT_URL:
+    raise ValueError("QDRANT_URL environment variable is required")
+
 QDRANT_URL: str = settings.QDRANT_URL
 QDRANT_COLLECTION: str = settings.QDRANT_COLLECTION
-REDIS_HOST: str = settings.REDIS_HOST
-REDIS_PORT: int = settings.REDIS_PORT
 UPLOAD_DIR: str = settings.UPLOAD_DIR
 LLM_MODEL: str = settings.LLM_MODEL
 LLM_MAX_NEW_TOKENS: int = settings.LLM_MAX_NEW_TOKENS
