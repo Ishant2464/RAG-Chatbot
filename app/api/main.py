@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import chat, ingest
+from app.api import chat, ingest, sources, suggestions
 
 app = FastAPI(
     title="Scalable RAG Chatbot",
@@ -23,6 +23,8 @@ app.add_middleware(
 
 app.include_router(chat.router, tags=["Chat"])
 app.include_router(ingest.router, tags=["Ingest"])
+app.include_router(sources.router, tags=["Sources"])
+app.include_router(suggestions.router, tags=["Suggestions"])
 
 
 @app.get("/health")

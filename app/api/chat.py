@@ -12,28 +12,32 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    query: str
+    messages: list[dict]
     file_url: str
 
-    @field_validator("query")
+    @field_validator("messages")
     @classmethod
-    def query_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Query cannot be empty.")
+    def messages_not_empty(cls, v: list[dict]) -> list[dict]:
+        if not v:
+            raise ValueError("Messages list cannot be empty.")
+        if v[-1].get("role") != "user":
+            raise ValueError("Last message must be from the user.")
+        if not v[-1].get("content", "").strip():
+            raise ValueError("Last user message content cannot be empty.")
         return v
 
 
-def get_chat_service() -> Callable[[str, str], Awaitable[dict]]:
+def get_chat_service() -> Callable[[list[dict], str], Awaitable[dict]]:
     return handle_chat
 
 
 @router.post("/chat")
 async def chat(
     request: ChatRequest,
-    chat_service: Callable[[str, str], Awaitable[dict]] = Depends(get_chat_service),
+    chat_service: Callable[[list[dict], str], Awaitable[dict]] = Depends(get_chat_service),
 ):
     try:
-        return await chat_service(request.query, request.file_url)
+        return await chat_service(request.messages, request.file_url)
     except Exception as e:
         print(f"CHAT ERROR: {e}")
         raise HTTPException(status_code=503, detail=f"Chat service error: {str(e)}")
@@ -42,13 +46,14 @@ async def chat(
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     try:
-        context = search(request.query, file_url=request.file_url, top_k=3)
+        query = request.messages[-1]["content"] # Extract latest user query for retrieval
+        context = search(query, file_url=request.file_url, top_k=3)
         if not context.strip():
             context = "No relevant context found."
         context = context[:1200]
 
         async def generate():
-            async for token in stream_llm(context, request.query):
+            async for token in stream_llm(context, request.messages):
                 yield token
 
         return StreamingResponse(generate(), media_type="text/plain")

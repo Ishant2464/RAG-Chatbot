@@ -3,7 +3,7 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
 
 interface Props {
-  onSuccess: (url: string) => void
+  onSuccess: (url: string, fileName: string) => void
 }
 
 type Status = 'idle' | 'uploading' | 'polling' | 'done' | 'error'
@@ -60,8 +60,8 @@ export default function FileUpload({ onSuccess }: Props) {
         if (data.status === 'finished') {
           setStatus('done')
           setMessage('✅ Document ready!')
-          // Pass the URL up to the parent page.tsx
-          setTimeout(() => onSuccess(storageUrl), 800) 
+          // Pass the URL and filename up to the parent page.tsx
+          setTimeout(() => onSuccess(storageUrl, fileName), 800) 
           return
         }
 

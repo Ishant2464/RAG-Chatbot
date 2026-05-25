@@ -5,11 +5,13 @@ MAX_CHUNKS = 3
 MAX_CHARS = 1200
 
 
-async def handle_chat(query: str, file_url: str) -> dict:
+async def handle_chat(messages: list[dict], file_url: str) -> dict:
     """
     Handle chat request for a specific document.
     Retrieves context only from the specified file_url.
     """
+    query = messages[-1]["content"]
+
     print("\n--- CHAT REQUEST ---")
     print("QUERY:", query)
     print("FILE_URL:", file_url)
@@ -28,11 +30,9 @@ async def handle_chat(query: str, file_url: str) -> dict:
 
     print("CALLING LLM...")
 
-    answer = await call_llm(context, query)
+    answer = await call_llm(context, messages)
 
     print("LLM RESPONSE:", answer[:200])
     print("--- END REQUEST ---\n")
-
-    return {"answer": answer}
 
     return {"answer": answer}

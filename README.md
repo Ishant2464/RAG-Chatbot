@@ -1,104 +1,131 @@
-# 🚀 Scalable RAG Chatbot
+# 🤖 RAG Chatbot — AI-Powered Document Q&A
 
-> A **production-grade Retrieval-Augmented Generation (RAG) system** that enables intelligent document Q&A with background job processing, distributed services, and real-world engineering patterns.
+<div align="center">
 
-Upload PDF documents, ask natural language questions, and get grounded answers powered by semantic search + LLM reasoning. Built for **scalability, reliability, and enterprise-grade architecture**.
+**Upload PDFs. Ask questions. Get grounded, streaming answers — with full conversation memory.**
+
+[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.116-green?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)](https://www.docker.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+[🌐 Live Demo](https://rag-chatbot-sage.vercel.app) · [📖 API Docs](https://your-api.onrender.com/docs) · [🐛 Report Bug](https://github.com/Ishant2464/RAG-Chatbot/issues)
+
+</div>
+
+---
+
+## 📖 Overview
+
+A production-grade **Retrieval-Augmented Generation (RAG)** system built with a microservices architecture. Upload any PDF and have intelligent multi-turn conversations about its content — backed by semantic vector search, cloud embeddings, and LPU-accelerated LLM inference.
+
+### What makes this different from a simple LLM chatbot?
+
+| Basic LLM Chatbot | This RAG System |
+|---|---|
+| Hallucinated answers | Grounded answers from your actual documents |
+| Single-turn, stateless | Multi-turn conversation with full context memory |
+| Blocks on heavy processing | Async job queue — instant HTTP responses |
+| One document at a time | Multi-document library with per-document filtering |
+| Fake loading spinner | Real-time token-by-token streaming (like ChatGPT) |
+| No attribution | Page-level source citations with hover previews |
 
 ---
 
 ## ✨ Features
 
-### Core Capabilities
-- ✅ **Document Ingestion** — Upload PDFs, automatically parse, chunk, embed, and index
-- ✅ **Semantic Search** — Cohere embeddings find relevant document sections
-- ✅ **LLM-Powered Answers** — Groq API (llama-3.1) generates grounded responses
-- ✅ **Multi-Document Support** — Each upload gets a unique file_url metadata tag for isolated retrieval
-- ✅ **Async Processing** — Background job queue prevents blocking; handle 30–60 second PDFs instantly
-- ✅ **Job Status Polling** — Track document processing in real-time via REST API
+### 🧠 Core RAG Capabilities
+- **📄 Async PDF Ingestion** — Drag-and-drop upload; heavy processing (parse, chunk, embed) offloaded to RQ background worker via Redis, returning instant HTTP responses for 100+ page documents
+- **🔍 Semantic Search** — Cohere `embed-english-v3.0` vectors stored in Qdrant Cloud with per-document payload indexing, enabling filtered retrieval in under 100ms
+- **⚡ Streaming Responses** — Token-by-token output via Groq LPU inference (Llama 3.1 8B) + FastAPI `StreamingResponse` — no waiting for the full answer
+- **💬 Multi-Turn Conversations** — Full conversation history sent with each request; the LLM maintains context across the entire session
 
-### Production Features
-- ✅ **Cloud Storage** — PDFs stored in Supabase Storage, not container filesystem (distributed architecture)
-- ✅ **Filename Sanitization** — Automatic cleanup of special characters (brackets, spaces, etc.)
-- ✅ **Health Checks** — API and Worker services expose `/health` endpoints with Redis verification
-- ✅ **UptimeRobot Integration** — Automatic monitoring prevents free-tier service spindown
-- ✅ **CORS Configured** — Works seamlessly with Vercel frontend
-- ✅ **Process Monitoring** — Worker service auto-restarts on crash; `wait -n` detects failures instantly
-- ✅ **Type Safety** — Full TypeScript frontend, Pydantic-validated backend
+### 🎨 Frontend Experience
+- **📝 Markdown Rendering** — ReactMarkdown with syntax-highlighted code blocks for technical document Q&A
+- **📑 Source Citations** — Page-level citation chips with hover tooltip previews; see exactly which page each answer came from
+- **💡 Smart Follow-ups** — AI-generated suggested follow-up questions after each response, rendered as clickable chips
+- **📤 Chat Export** — Download full conversations as Markdown files for offline reference
+
+### 🏗️ Production Architecture
+- **🔐 Google OAuth** — Secure authentication via Supabase Auth with per-user document isolation
+- **📚 Document Library** — Multi-document sidebar with persistent document history per user; switch documents mid-conversation
+- **☁️ Cloud Storage** — PDFs stored in Supabase Storage, not container filesystem; both API and Worker access via HTTPS URLs — fully stateless containers
+- **🩺 Health Checks** — Worker health endpoint pings Redis; UptimeRobot monitors both services for real failures, not false positives
+- **🔄 Crash Recovery** — `wait -n` in worker shell script detects any process death and exits container; Render auto-restarts instantly
 
 ---
 
 ## 🏗️ System Architecture
 
-### Component Interaction: Upload → Chat Flow
+### Full Request Flow: Upload → Ingest → Chat
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     VERCEL FRONTEND (Next.js)                    │
-│  FileUpload.tsx → Sanitize → Upload → Poll → ChatWindow.tsx     │
-└──────────────────────┬──────────────────────────────────────────┘
+│                     VERCEL FRONTEND (Next.js 14)                 │
+│                                                                  │
+│  FileUpload.tsx   → Sanitize → Upload → Poll Status             │
+│  ChatWindow.tsx   → Stream Tokens → Render Markdown             │
+│  MessageBubble    → Citation chips + Follow-up suggestions      │
+│  DocumentSidebar  → Multi-doc library + per-doc switching       │
+└──────────────────────┬───────────────────────────────────────────┘
                        │ HTTPS
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    RENDER API SERVICE                            │
-│         (FastAPI running start.sh)                              │
+│                    RENDER API SERVICE (FastAPI)                  │
 │                                                                  │
-│  POST /ingest                                                   │
-│  ├─ Receive PDF bytes + filename                              │
-│  ├─ Sanitize: file_[1].pdf → uuid_file_1.pdf                 │
-│  ├─ Upload to Supabase Storage                                 │
-│  └─ Enqueue RQ job with storage_url (not local path!)          │
+│  POST /ingest                                                    │
+│  ├─ Sanitize: file_[1].pdf → uuid_file_1.pdf                   │
+│  ├─ Upload bytes → Supabase Storage                             │
+│  └─ Enqueue RQ job with storage_url → {job_id} (instant)       │
 │                                                                  │
-│  GET /ingest/{job_id}/status                                   │
-│  ├─ Frontend polls every 1 sec                                 │
-│  └─ status: queued → started → finished                        │
+│  GET /ingest/{job_id}/status                                     │
+│  └─ Poll: queued → started → finished                           │
 │                                                                  │
-│  POST /chat {query, file_url}                                  │
-│  ├─ Search Qdrant FILTERED by file_url                        │
-│  ├─ Only retrieve chunks from specific document               │
-│  ├─ Call Groq API                                             │
-│  └─ Stream response back                                       │
-└───────────┬─────────────────────────┬──────────────┬───────────┘
-            │                         │              │
-            ▼                         ▼              ▼
-       ┌─────────────┐        ┌──────────────┐   ┌─────────────┐
-       │ Supabase    │        │ Qdrant Cloud │   │  Groq API   │
-       │ Storage     │        │ (Vectors +   │   │             │
-       │ (PDFs)      │        │  Metadata)   │   │ llama-3.1   │
-       └─────────────┘        └──────────────┘   └─────────────┘
-            ▲                         ▲
-            │                         │
-            └────────────────┬────────┘
-                             │
-    ┌────────────────────────▼──────────────────────┐
-    │      RENDER WORKER SERVICE                   │
-    │   (worker.sh: RQ Worker + Uvicorn Health)   │
-    │                                              │
-    │  Process 1: RQ Worker                       │
-    │  ├─ Dequeue process_doc(storage_url)       │
-    │  ├─ Download PDF from Supabase             │
-    │  ├─ PyPDF parse                            │
-    │  ├─ Add metadata: doc.metadata["file_url"] │
-    │  ├─ Split into 2000-char chunks           │
-    │  ├─ Cohere embeddings → vectors           │
-    │  └─ Store in Qdrant                        │
-    │                                              │
-    │  Process 2: Uvicorn Health Server :8000    │
-    │  ├─ GET /health                            │
-    │  ├─ Verify Redis connection                │
-    │  └─ UptimeRobot monitors this              │
-    │                                              │
-    │  ⚠️ If either crashes:                      │
-    │     wait -n detects → exit container        │
-    │     → Render auto-restart                   │
-    └───────────┬────────────────────────────────┘
-                │ Redis connection
-                │
-    ┌───────────▼────────────────────┐
-    │  Upstash Redis (Cloud)         │
-    │  - Job queue                   │
-    │  - Job status                  │
-    │  - Connection pooling          │
-    └────────────────────────────────┘
+│  POST /chat/stream  {query, file_url, history}                  │
+│  ├─ Qdrant filtered search by file_url payload (<100ms)        │
+│  ├─ Build prompt with context + conversation history            │
+│  └─ Groq streaming → StreamingResponse (text/plain)             │
+│                                                                  │
+│  POST /chat/sources      → page-level citation metadata         │
+│  POST /chat/suggestions  → AI-generated follow-up questions     │
+└────────────┬─────────────────────────┬───────────────────────────┘
+             │                         │
+             ▼                         ▼
+    ┌─────────────────┐       ┌────────────────────┐
+    │ Supabase Storage│       │   Groq LPU API     │
+    │   (PDFs)        │       │  Llama 3.1 8B      │
+    └────────┬────────┘       └────────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────────────┐
+│         RENDER WORKER SERVICE                │
+│                                              │
+│  Process 1: RQ Worker                       │
+│  ├─ Dequeue process_doc(storage_url)        │
+│  ├─ Download PDF from Supabase              │
+│  ├─ PyPDF parse → 2000-char chunks          │
+│  ├─ Tag: doc.metadata["file_url"]           │
+│  ├─ Cohere embed-english-v3.0               │
+│  └─ Batch upsert → Qdrant Cloud             │
+│                                              │
+│  Process 2: Uvicorn Health :8001            │
+│  ├─ GET /health → ping Redis                │
+│  └─ UptimeRobot monitors this               │
+│                                              │
+│  ⚠️  wait -n: crash → Render auto-restart   │
+└────────────────┬─────────────────────────────┘
+                 │
+    ┌────────────┴────────────────────────┐
+    │                                     │
+    ▼                                     ▼
+┌──────────────────────┐    ┌─────────────────────────────┐
+│  Upstash Redis       │    │  Qdrant Cloud               │
+│  Job queue + status  │    │  Vectors + payload metadata  │
+└──────────────────────┘    │  Per-document filtered search│
+                             └─────────────────────────────┘
 ```
 
 ---
@@ -106,40 +133,40 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 ## 💾 Technology Stack
 
 ### Backend
-| Component | Technology | Why? |
-|-----------|-----------|------|
-| **API Framework** | FastAPI + Uvicorn | Type hints, auto docs, async-native |
-| **Job Queue** | RQ (Redis Queue) | Simple, Python-native, reliable |
-| **PDF Parsing** | PyPDF | Lightweight, no C deps |
-| **Text Chunking** | LangChain TextSplitter | Context-aware splitting |
-| **Embeddings** | Cohere `embed-english-v3.0` | Managed cloud embeddings; no local model download |
-| **Vector DB** | Qdrant | REST API, metadata filtering, cloud-hosted |
-| **LLM** | Groq API (llama-3.1-8b) | Fast, free tier, no local model |
-| **Config** | Pydantic Settings | Type-safe environment variables |
-| **Storage** | Supabase Storage | Cheap, easy RLS policies, public URLs |
+| Component | Technology | Why |
+|---|---|---|
+| **API Framework** | FastAPI + Uvicorn | Type hints, auto Swagger docs, async-native |
+| **Job Queue** | RQ (Redis Queue) | Simple, Python-native, reliable async processing |
+| **PDF Parsing** | PyPDF | Lightweight, no C dependencies |
+| **Text Chunking** | LangChain TextSplitter | 2000-char chunks with 200-char overlap |
+| **Embeddings** | Cohere `embed-english-v3.0` | Managed cloud — no local model, no Docker bloat |
+| **Vector DB** | Qdrant Cloud | REST API, per-document payload filtering, persistent |
+| **LLM** | Groq API (Llama 3.1 8B) | LPU hardware — fastest free-tier inference available |
+| **Storage** | Supabase Storage | Stateless containers share PDFs via HTTPS URLs |
+| **Auth** | Supabase Auth (Google OAuth) | Per-user document isolation |
+| **Config** | Pydantic Settings | Type-safe, validated environment variables |
 
 ### Frontend
-| Component | Technology | Why? |
-|-----------|-----------|------|
-| **Framework** | Next.js 14 (React) | SSR, built-in optimization, TypeScript |
-| **Styling** | Tailwind CSS | Utility-first, responsive |
-| **State** | React hooks | Simple, no Redux needed |
-| **HTTP** | Fetch API | Native, no external deps |
-| **Deployment** | Vercel | Auto-deploy, environment vars |
+| Component | Technology | Why |
+|---|---|---|
+| **Framework** | Next.js 14 + TypeScript | App Router, SSR, full type safety |
+| **Styling** | Tailwind CSS | Utility-first, dark theme, fully responsive |
+| **Markdown** | ReactMarkdown + rehype-highlight | Rich rendering with syntax-highlighted code |
+| **Streaming** | Fetch ReadableStream | Native token-by-token consumption, no WebSocket needed |
+| **State** | React hooks | Simple, no Redux overhead |
 
 ### Infrastructure
-| Component | Service | Cost |
-|-----------|---------|------|
-| **API Server** | Render | $7/mo |
-| **Worker** | Render | $7/mo |
-| **Vector DB** | Qdrant Cloud | Free tier |
-| **Storage** | Supabase | Free tier |
-| **Job Queue** | Upstash Redis | Free tier |
-| **Frontend** | Vercel | Free tier |
-| **Monitoring** | UptimeRobot | Free tier |
-| **LLM** | Groq API | Free tier |
-| **Embeddings** | Cohere API | Usage-based |
-| **Total** | | ~$14/mo |
+| Service | Provider | Cost |
+|---|---|---|
+| API Server | Render | Free tier |
+| Worker | Render | Free tier |
+| Vector DB | Qdrant Cloud | Free tier |
+| Storage + Auth | Supabase | Free tier |
+| Job Queue | Upstash Redis | Free tier |
+| Frontend | Vercel | Free forever |
+| Monitoring | UptimeRobot | Free tier |
+| LLM Inference | Groq API | Free tier |
+| Embeddings | Cohere API | Usage-based |
 
 ---
 
@@ -148,166 +175,120 @@ Upload PDF documents, ask natural language questions, and get grounded answers p
 ### Prerequisites
 - Python 3.11+, Docker, Docker Compose
 - Node.js 18+
-- Free Groq API key: https://console.groq.com/keys
-- Cohere API key: https://dashboard.cohere.com/api-keys
+- Free API keys: [Groq](https://console.groq.com/keys) · [Cohere](https://dashboard.cohere.com/api-keys)
 
 ### Backend
 
-**1. Clone & configure**
+**1. Clone and configure**
 ```bash
-git clone https://github.com/yourusername/rag-chatbot.git
-cd rag-chatbot
+git clone https://github.com/Ishant2464/RAG-Chatbot.git
+cd RAG-Chatbot
 cp .env.example .env
+# Fill in your API keys
 ```
 
-**2. Edit `.env`**
-```env
-GROQ_API_KEY=gsk_...
-COHERE_API_KEY=...
-QDRANT_URL=http://localhost:6333
-REDIS_URL=redis://localhost:6379
-```
-
-**3. Start services**
+**2. Start all services**
 ```bash
 docker compose build
 docker compose up
 ```
 
-Services: API (8000), Qdrant (6333), Valkey (6379)
+Starts: FastAPI API (`:8000`) · Qdrant (`:6333`) · Valkey/Redis (`:6379`) · RQ Worker
+
+**3. Verify**
+```bash
+curl http://localhost:8000/health
+# → {"status": "ok"}
+```
+
+Open [http://localhost:8000/docs](http://localhost:8000/docs) for interactive API documentation.
 
 ### Frontend
 
-**1. Install & configure**
 ```bash
 cd frontend
 npm install
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
-```
-
-**2. Run dev server**
-```bash
+cp .env.example .env.local
+# Set NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
-Frontend: http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## 📡 Production Deployment (Render + Vercel)
 
-### 1. Deploy API Service
+### 1. Deploy API Service on Render
 
 ```
-Render Dashboard → Create Web Service
-├─ GitHub repo
-├─ Branch: main
-├─ Build: (blank)
-├─ Start: (blank, uses Dockerfile CMD)
-├─ Environment Variables:
-│  ├─ GROQ_API_KEY=...
-│  ├─ COHERE_API_KEY=...
-│  ├─ QDRANT_URL=https://[cluster].qdrant.io
-│  ├─ QDRANT_API_KEY=...
-│  ├─ REDIS_URL=rediss://...@upstash.io:6379
-│  ├─ SUPABASE_URL=https://[project].supabase.co
-│  ├─ SUPABASE_ANON_KEY=...
-│  └─ SUPABASE_BUCKET=rag-docs
-└─ Create Web Service
+New Web Service → GitHub repo → main branch
+Start Command: bash start.sh
 ```
 
-### 2. Deploy Worker Service
+### 2. Deploy Worker Service on Render
 
 ```
-Same as above but:
-├─ Name: rag-chatbot-worker
-├─ Start: bash worker.sh  ← CRITICAL!
-└─ Same env vars
+New Web Service → same GitHub repo → main branch
+Start Command: bash worker.sh
 ```
 
-### 3. Configure Supabase
+**Environment variables (set on both services):**
 
-```
-Supabase Dashboard
-├─ Storage → rag-docs bucket
-├─ Policies → New Policy:
-│  ├─ Name: Allow uploads
-│  ├─ Operations: INSERT ✓, SELECT ✓
-│  ├─ Target Roles: anon
-│  └─ WITH CHECK: true
-```
-
-### 4. Setup UptimeRobot
-
-```
-UptimeRobot → Add Monitor
-├─ Type: HTTP(s)
-├─ URL: https://rag-chatbot-[id].onrender.com/health
-├─ Interval: 5 minutes
-├─ Add another for worker:
-│  └─ URL: https://rag-chatbot-worker-[id].onrender.com/health
+```env
+GROQ_API_KEY=...
+COHERE_API_KEY=...
+QDRANT_URL=https://[cluster].qdrant.io
+QDRANT_API_KEY=...
+QDRANT_COLLECTION=rag_docs
+REDIS_URL=rediss://...@upstash.io:6379
+SUPABASE_URL=https://[project].supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_BUCKET=rag-docs
+UPLOAD_DIR=/tmp/rag_uploads
 ```
 
-### 5. Deploy Frontend
+### 3. Deploy Frontend on Vercel
 
 ```
-Vercel Dashboard → Import
-├─ Frontend folder
-├─ Environment Variables:
-│  └─ NEXT_PUBLIC_API_URL=https://rag-chatbot-[id].onrender.com
-└─ Deploy
+Import GitHub repo → Root Directory: frontend
+Environment Variable: NEXT_PUBLIC_API_URL=https://your-api.onrender.com
 ```
+
+### 4. Setup UptimeRobot (Keep-Alive + Monitoring)
+
+Add two HTTP monitors at 5-minute intervals:
+- `https://your-api.onrender.com/health`
+- `https://your-worker.onrender.com/health`
+
+Prevents Render free-tier sleep and alerts on real Redis connectivity failures.
 
 ---
 
 ## 📚 API Reference
 
-### POST /ingest
-Upload and queue a PDF for processing.
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Health check with Redis ping |
+| `POST` | `/ingest` | Upload and queue PDF for processing |
+| `GET` | `/ingest/{id}/status` | Poll background job: queued → started → finished |
+| `POST` | `/chat` | Non-streaming chat (full response) |
+| `POST` | `/chat/stream` | Streaming chat with conversation history |
+| `POST` | `/chat/sources` | Page-level source citations for a query |
+| `POST` | `/chat/suggestions` | AI-generated follow-up questions |
 
+**Ingest a document:**
 ```bash
-curl -X POST http://localhost:8000/ingest \
-  -F "file=@document.pdf"
+curl -X POST http://localhost:8000/ingest -F "file=@document.pdf"
+# → {"job_id": "abc123", "file": "document.pdf", "status": "queued", "storage_url": "..."}
 ```
 
-**Response:**
-```json
-{
-  "job_id": "b9ab8c5f-1234-5678",
-  "file": "document.pdf",
-  "status": "queued",
-  "storage_url": "https://yafiakrb...rag-docs/3a2f1c2e_document.pdf"
-}
-```
-
-### GET /ingest/{job_id}/status
-Poll job completion status.
-
+**Streaming chat:**
 ```bash
-curl http://localhost:8000/ingest/b9ab8c5f-1234-5678/status
-```
-
-**Response:** `{status: "queued|started|finished|failed"}`
-
-### POST /chat
-Ask a question (requires file_url).
-
-```bash
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8000/chat/stream \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is this about?",
-    "file_url": "https://..."
-  }'
-```
-
-**Response:** `{answer: "Based on the document..."}`
-
-### GET /health
-Health check (for UptimeRobot).
-
-```bash
-curl http://localhost:8000/health
+  -d '{"query": "What is the main argument?", "file_url": "https://...", "history": []}'
+# → token-by-token text stream
 ```
 
 ---
@@ -318,120 +299,119 @@ curl http://localhost:8000/health
 rag-chatbot/
 ├── app/
 │   ├── api/
-│   │   ├── main.py           # FastAPI + CORS
-│   │   ├── chat.py           # POST /chat endpoint
-│   │   └── ingest.py         # POST /ingest (with sanitization)
+│   │   ├── main.py              # FastAPI app + CORS middleware
+│   │   ├── chat.py              # /chat, /chat/stream, /sources, /suggestions
+│   │   └── ingest.py            # /ingest with filename sanitization
 │   ├── services/
-│   │   ├── chat_services.py  # Orchestration logic
-│   │   └── ingest_service.py # Parse + chunk + embed
+│   │   ├── chat_services.py     # RAG orchestration + conversation history
+│   │   └── ingest_service.py    # PDF parse → chunk → embed pipeline
 │   ├── clients/
-│   │   ├── groq_client.py    # LLM integration
-│   │   ├── vector_store.py   # Qdrant + metadata filtering
-│   │   └── supabase_client.py # Cloud storage upload
+│   │   ├── groq_client.py       # Groq LLM + streaming async generator
+│   │   ├── vector_store.py      # Qdrant + Cohere + payload filtering
+│   │   └── supabase_client.py   # Cloud storage upload/download
 │   ├── queues/
-│   │   ├── ingest_job.py     # RQ job enqueue
-│   │   └── worker_tasks.py   # Worker task def
+│   │   ├── ingest_job.py        # RQ job enqueue
+│   │   └── worker_tasks.py      # Worker task: download → parse → embed → index
 │   ├── core/
-│   │   └── config.py         # Pydantic env vars
-│   └── worker.py             # RQ worker entrypoint
+│   │   └── config.py            # Pydantic Settings (all env vars, type-safe)
+│   └── worker.py                # RQ worker entrypoint
 ├── frontend/
-│   ├── src/app/
-│   │   ├── page.tsx          # Main page (state mgmt)
-│   │   └── components/
-│   │       ├── FileUpload.tsx    # Upload + polling
-│   │       └── ChatWindow.tsx    # Chat UI
-│   └── tailwind.config.js
-├── Dockerfile                # Shared by API + Worker
-├── docker-compose.yml        # Local dev
-├── start.sh                  # API startup (Uvicorn)
-├── worker.sh                 # Worker startup (RQ + Health)
-└── README.md                 # This file
+│   └── src/app/
+│       ├── page.tsx             # Root state: auth + document selection
+│       ├── layout.tsx           # Root layout + metadata
+│       └── components/
+│           ├── FileUpload.tsx       # Drag-and-drop + job status polling
+│           ├── ChatWindow.tsx       # Streaming chat + conversation history
+│           ├── MessageBubble.tsx    # Markdown + citation chips
+│           ├── DocumentSidebar.tsx  # Multi-document library per user
+│           └── Auth.tsx             # Google OAuth via Supabase
+├── Dockerfile                   # Shared image (API + Worker)
+├── docker-compose.yml           # Local dev (Qdrant + Valkey included)
+├── start.sh                     # API startup script
+├── worker.sh                    # Worker + health server startup
+├── .env.example                 # Backend env var template
+└── frontend/.env.example        # Frontend env var template
 ```
 
 ---
 
 ## 🎯 Key Engineering Decisions
 
-### 1. Async Job Queue
-**Problem:** PDF processing takes 30–60s; can't do synchronously in HTTP request.
-**Solution:** RQ worker dequeues asynchronously. API returns job_id immediately.
-**Result:** Instant user feedback; processing independent.
+**1. Async Job Queue — Why not process inline?**
+PDF parsing + embedding 200–300 chunks takes 30–60 seconds. Synchronous processing in a POST handler causes timeouts and blocks the API. RQ decouples ingestion entirely — the API enqueues and responds in milliseconds; the worker processes independently.
 
-### 2. Cloud Storage (Supabase)
-**Problem:** Containers have isolated filesystems. API saves locally; Worker can't access.
-**Solution:** API uploads to Supabase; Worker downloads via HTTPS URL.
-**Result:** Both containers stateless; no filesystem sync issues.
+**2. Cloud Storage (Supabase) — Why not local filesystem?**
+The API container and Worker container have isolated filesystems. If the API saves a PDF locally, the Worker can't access it. Uploading to Supabase Storage first means both containers are fully stateless — they share data via HTTPS URLs. This is the correct distributed systems pattern.
 
-### 3. File URL Metadata Tagging
-**Problem:** All documents mixed in Qdrant. User A gets answers from User B's docs.
-**Solution:** Tag all chunks with `metadata["file_url"]`. Chat filters by file_url.
-**Result:** Each document searchable independently; multi-user safe.
+**3. Per-Document Payload Filtering — Why not one global collection?**
+Without filtering, any user's query could return chunks from any other user's document. Tagging every vector with `metadata["file_url"]` and filtering at query time enforces strict per-document, per-user isolation — critical for a multi-user system.
 
-### 4. 2000-Char Chunks
-**Problem:** Too small = fragmented; too large = LLM uses wrong sections.
-**Solution:** 2000-char chunks with 200-char overlap.
-**Result:** Good semantic context + precise retrieval.
+**4. Cohere Cloud Embeddings — Why not a local model?**
+Local embedding models (sentence-transformers) pull PyTorch into Docker — that's 1.5GB+ of CUDA libraries. Cohere's API eliminates this entirely: smaller images, faster builds, faster deploys, and no GPU dependency.
 
-### 5. Cloud Embeddings (Cohere)
-**Problem:** Local embedding models increase image size and deployment complexity.
-**Solution:** Use Cohere `embed-english-v3.0` through the cloud API.
-**Result:** Smaller containers, simpler builds, and managed embedding quality.
+**5. Streaming via ReadableStream — Why not WebSockets?**
+HTTP streaming with `text/plain` + FastAPI `StreamingResponse` is simpler than WebSockets for one-directional token output, requires no persistent connection management, and works natively with the Fetch API's `ReadableStream` — zero client-side libraries needed.
 
-### 6. Separate API + Worker Services
-**Problem:** 512MB RAM limit; API + Worker together can exceed it.
-**Solution:** Run as two separate Render services, each gets 512MB.
-**Result:** Stable system; if Worker crashes, API keeps serving /health.
-
-### 7. Process Monitoring in Worker
-**Problem:** Dummy HTTP servers look healthy but might not be working.
-**Solution:** Health endpoint pings Redis; only 200 if connection succeeds.
-**Result:** UptimeRobot detects real failures, not false positives.
-
----
-
-## 🎓 Portfolio Value
-
-This project demonstrates:
-- ✅ **Async Architecture** — Job queues, background processing, polling
-- ✅ **Distributed Systems** — Stateless services, cloud storage, metadata isolation
-- ✅ **Real-World Constraints** — Free tier optimization, RAM budgets, cold starts
-- ✅ **DevOps** — Docker, environment configs, health checks, monitoring
-- ✅ **Full-Stack** — React frontend, FastAPI backend, cloud infrastructure
-- ✅ **Type Safety** — TypeScript + Pydantic
-- ✅ **RAG Internals** — Embeddings, vector search, LLM prompting
-
-Perfect for **internships, ML engineering interviews, portfolio projects**.
+**6. Separate API + Worker Render Services — Why not combined?**
+Render's free tier provides 512MB RAM per service. FastAPI uses ~100MB; the Worker embedding a large PDF peaks at ~300MB. Combined, they breach the limit. Separate services each get 512MB independently, and if the Worker crashes it doesn't take the API down with it.
 
 ---
 
 ## 📊 Performance
 
-| Operation | Time |
-|-----------|------|
-| Upload 10-page PDF | ~2 sec |
-| Process 10-page PDF | ~15–20 sec |
-| Semantic search | ~200 ms |
-| LLM inference | ~1–2 sec |
-| End-to-end chat | ~2–3 sec |
+| Operation | Typical Time |
+|---|---|
+| PDF upload | ~1–2 sec |
+| Document processing (10 pages, ~80 chunks) | ~15–20 sec |
+| Document processing (100 pages, ~266 chunks) | ~45–60 sec |
+| Qdrant filtered semantic search | ~80–120 ms |
+| First token (Groq LPU) | ~300–500 ms |
+| Full streaming response | ~1–3 sec |
 
 ---
 
 ## 🛠️ Useful Commands
 
 ```bash
-# Local dev
-docker compose up
-docker compose logs -f api
+# Start local dev stack
+docker compose up --build
+
+# View live logs
+docker compose logs -f
+docker compose logs -f app
 docker compose logs -f worker
 
-# Test API
-curl -X POST http://localhost:8000/ingest -F "file=@test.pdf"
+# Reset all data (wipes Qdrant collection)
+docker compose down -v
+
+# Quick API tests
 curl http://localhost:8000/health
+curl -X POST http://localhost:8000/ingest -F "file=@test.pdf"
 
 # Frontend
 cd frontend && npm run dev
-npm run build
+cd frontend && npm run build
 ```
+
+---
+
+## 🌍 Environment Variables
+
+| Variable | Description | Source |
+|---|---|---|
+| `GROQ_API_KEY` | Groq LLM API key | [console.groq.com](https://console.groq.com) |
+| `COHERE_API_KEY` | Cohere embeddings key | [dashboard.cohere.com](https://dashboard.cohere.com) |
+| `QDRANT_URL` | Qdrant server URL | [cloud.qdrant.io](https://cloud.qdrant.io) or `http://localhost:6333` |
+| `QDRANT_API_KEY` | Qdrant API key (cloud only) | [cloud.qdrant.io](https://cloud.qdrant.io) |
+| `QDRANT_COLLECTION` | Collection name | Default: `rag_docs` |
+| `REDIS_URL` | Redis connection URL | [upstash.com](https://upstash.com) or `redis://localhost:6379` |
+| `SUPABASE_URL` | Supabase project URL | Supabase dashboard |
+| `SUPABASE_ANON_KEY` | Supabase anonymous key | Supabase dashboard |
+| `SUPABASE_BUCKET` | Storage bucket name | Default: `rag-docs` |
+| `UPLOAD_DIR` | Temp upload path | Default: `/tmp/rag_uploads` |
+| `NEXT_PUBLIC_API_URL` | Backend URL for frontend | Your Render API URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL (frontend) | Supabase dashboard |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase key (frontend) | Supabase dashboard |
 
 ---
 
@@ -441,6 +421,6 @@ MIT
 
 ---
 
-## 🙏 Credits
-
-Built with **FastAPI**, **Groq**, **Cohere**, **Qdrant**, **LangChain**, **Supabase**, **Render**, **Vercel**.
+<div align="center">
+  Built with FastAPI · Groq · Cohere · Qdrant · LangChain · Supabase · Next.js · Render · Vercel
+</div>

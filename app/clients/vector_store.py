@@ -82,11 +82,83 @@ def search(query: str, file_url: str, top_k: int = 4) -> str:
     return "\n\n---\n\n".join(context_parts)
 
 
-def ingest_documents(chunks, collection_name: str = QDRANT_COLLECTION):
-    QdrantVectorStore.from_documents(
-        documents=chunks,
-        embedding=get_embedding_model(),
-        url=QDRANT_URL,
-        collection_name=collection_name,
-        api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
+def search_with_sources(query: str, file_url: str, top_k: int = 4) -> dict:
+    """
+    Search for documents and return both the context string AND structured source metadata.
+    """
+    vector_store = get_vector_store()
+
+    filter_condition = {
+        "must": [
+            {
+                "key": "metadata.file_url",
+                "match": {
+                    "value": file_url
+                }
+            }
+        ]
+    }
+
+    results = vector_store.similarity_search(
+        query=query,
+        k=top_k,
+        filter=filter_condition
     )
+
+    context_parts = []
+    sources = []
+    seen_pages = set()
+
+    for r in results:
+        context_parts.append(
+            f"Page Content: {r.page_content}\n"
+            f"Page Number: {r.metadata.get('page_label', 'N/A')}\n"
+            f"Source: {r.metadata.get('source', 'Unknown')}"
+        )
+
+        page = r.metadata.get('page_label', 'N/A')
+        if page not in seen_pages:
+            seen_pages.add(page)
+            sources.append({
+                "page": page,
+                "snippet": r.page_content[:150].strip() + "..." if len(r.page_content) > 150 else r.page_content.strip(),
+                "source": r.metadata.get('source', 'Unknown')
+            })
+
+    context = "\n\n---\n\n".join(context_parts)
+
+    return {
+        "context": context,
+        "sources": sources
+    }
+
+
+def ingest_documents(chunks, collection_name: str = QDRANT_COLLECTION):
+    """
+    Add document chunks to the existing Qdrant collection.
+    Does NOT recreate the collection — preserves all previously ingested documents.
+    """
+    global _vector_store
+
+    try:
+        # Try to add to existing collection first
+        vector_store = QdrantVectorStore.from_existing_collection(
+            url=QDRANT_URL,
+            collection_name=collection_name,
+            embedding=get_embedding_model(),
+            api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
+        )
+        vector_store.add_documents(chunks)
+    except Exception:
+        # Collection doesn't exist yet — create it with the first batch of documents
+        QdrantVectorStore.from_documents(
+            documents=chunks,
+            embedding=get_embedding_model(),
+            url=QDRANT_URL,
+            collection_name=collection_name,
+            api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
+            force_recreate=False,
+        )
+
+    # Reset cached vector store so next search picks up newly added documents
+    _vector_store = None
